@@ -1,28 +1,42 @@
 import claude
+import tools
 
+def agent_loop(conversation):
+    """Keep asking Claude, and running the tools it asks for, until it's done."""
+    while True:
+        message = claude.get_next_answer(conversation, tools.DEFINITIONS)
+
+        # Every reply goes into the conversation, tool calls included: the API
+        # matches each tool_result to a tool_use in the previous assistant message,
+        # and wants the reply's thinking blocks sent back unchanged.
+        conversation.append({"role": "assistant", "content": message.content})
+
+        text = claude.text_of(message)
+        if text:
+            print("Sancho:", text)
+
+        if message.stop_reason != "tool_use":
+            return
+
+        tool_calls = claude.tool_calls_of(message)
+        results = tools.run(tool_calls)
+        conversation.append({"role": "user", "content": results})
 
 
 def main():
     conversation = []
     print("Sancho. At your service 🫡 (Ctrl-D to quit)")
 
-    while True:
-        try:
+    try:
+        while True:
             user_input = input("You: ")
-        except (EOFError, KeyboardInterrupt):
-            print("Error")
-            break
-        if not user_input.strip():
-            continue
+            if not user_input.strip():
+                continue
 
-        conversation.append({"role": "user", "content": user_input})
-        message = claude.get_next_answer(conversation)
-        conversation.append({"role": "assistant", "content": message.content})
-
-        for block in message.content:
-            if block.type == "text":
-                print("Sancho:", block.text)
-
+            conversation.append({"role": "user", "content": user_input})
+            agent_loop(conversation)
+    except (EOFError, KeyboardInterrupt):
+        pass
 
 if __name__ == "__main__":
     main()
