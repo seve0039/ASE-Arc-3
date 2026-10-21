@@ -1,3 +1,4 @@
+import os
 
 READ_FILE = {
     "name": "read_file",
@@ -15,12 +16,42 @@ READ_FILE = {
     },
 }
 
+LIST_FOLDER = {
+    "name": "list_folder",
+    "description": "List what's in a folder, one name per line. Folders end with a slash. "
+    "Not recursive: to see inside a subfolder, call it again with that subfolder. "
+    "Hidden entries (starting with a dot, e.g. .gitignore) are left out unless you ask for them.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "description": "Folder to list, relative to the current folder. Defaults to the current folder.",
+            },
+            "include_hidden": {
+                "type": "boolean",
+                "description": "Also list hidden entries. Defaults to false.",
+            },
+        },
+    },
+}
+
 def read_file(path):
     with open(path) as f:
         return f.read()
 
-DEFINITIONS = [READ_FILE]
-FUNCTIONS = {READ_FILE["name"]: read_file}
+def list_folder(path=".", include_hidden=False):
+    names = sorted(os.listdir(path))
+    if not include_hidden:
+        names = [name for name in names if not name.startswith(".")]
+    if not names:
+        return "(empty folder)"
+    return "\n".join(
+        name + "/" if os.path.isdir(os.path.join(path, name)) else name for name in names
+    )
+
+DEFINITIONS = [READ_FILE, LIST_FOLDER]
+FUNCTIONS = {READ_FILE["name"]: read_file, LIST_FOLDER["name"]: list_folder}
 
 
 def run(tool_calls):
@@ -49,7 +80,3 @@ def run(tool_calls):
             )
 
     return results
-
-def read_file(path):
-    with open(path) as f:
-        return f.read()
