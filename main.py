@@ -9,6 +9,7 @@ def agent_loop(conversation):
         # Every reply goes into the conversation, tool calls included: the API
         # matches each tool_result to a tool_use in the previous assistant message,
         # and wants the reply's thinking blocks sent back unchanged.
+        print(claude.get_token_estimate(message))
         conversation.append({"role": "assistant", "content": message.content})
 
         text = claude.text_of(message)
@@ -36,6 +37,7 @@ def main():
             conversation.append({"role": "user", "content": user_input})
             try:
                 agent_loop(conversation)
+                
             except claude.Unreachable as e:
                 print(
                     f"Sancho can't reach Claude right now: {e} Try again in a moment.")

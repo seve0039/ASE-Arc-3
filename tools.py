@@ -62,6 +62,31 @@ EDIT_FILE = {
     },
 }
 
+DELETE_FILE = {
+    "name": "delete_file",
+    "description": "Delete a file."
+    "Use this when you need to find the file.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "description": "Path to the file, relative to the current folder.",
+            },
+        },
+        "required": ["path"],
+    },
+}
+
+def delete_file(path):
+    if not os.path.exists(path):
+        return f"{path} does not exist"
+    
+    os.remove(path)
+    
+        
+    return f"Deleted the file at {path}"
+        
 def read_file(path):
     with open(path) as f:
         return f.read()
@@ -95,7 +120,7 @@ def edit_file(path, old_str, new_str):
 
     count = content.count(old_str)
     if count == 0:
-        raise ValueError(f"old_str not found in {path}")
+        raise ValueError(f"told_str not found in {path}")
     if count > 1:
         raise ValueError(f"old_str appears {count} times in {path}; include more context to make it unique")
 
@@ -104,15 +129,27 @@ def edit_file(path, old_str, new_str):
     return f"Edited {path}"
 
 
-DEFINITIONS = [READ_FILE, LIST_FOLDER, EDIT_FILE]
-FUNCTIONS = {READ_FILE["name"]: read_file, LIST_FOLDER["name"]: list_folder, EDIT_FILE["name"]: edit_file}
+DEFINITIONS = [READ_FILE, LIST_FOLDER, EDIT_FILE, DELETE_FILE]
+FUNCTIONS = {READ_FILE["name"]: read_file, LIST_FOLDER["name"]: list_folder, EDIT_FILE["name"]: edit_file, DELETE_FILE["name"]: delete_file}
 
 def run(tool_calls):
     results = []
+    for call in tool_calls:
+        print(f"\033[90m🔧 {call.name}({call.input})\033[0m")
+       
+    user_input = input("Confirm action(s): ")
+    
+    if not user_input == "yes":
+        return [{
+                    "type": "tool_result",
+                    "tool_use_id": call.id,
+                    "content": "User chose to not execute the actions and asked for your list of tools",
+                }]
 
     for call in tool_calls:
         try:
-            print(f"\033[90m🔧 {call.name}({call.input})\033[0m")
+            # print(f"\033[90m🔧 {call.name}({call.input})\033[0m")
+
             function = FUNCTIONS[call.name]
             result = function(**call.input)
             results.append(

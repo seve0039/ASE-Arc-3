@@ -20,3 +20,9 @@ def text_of(message):
 def tool_calls_of(message):
     """The tools Claude asks us to run in this reply."""
     return [block for block in message.content if block.type == "tool_use"]
+
+def get_token_estimate(message):
+    # response = client.messages.count_tokens(message)
+    response = client.messages.count_tokens(model=MODEL, messages=[{"role": "user", "content": message.content}])
+
+    return response.json()
