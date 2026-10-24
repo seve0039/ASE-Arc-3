@@ -120,7 +120,7 @@ def edit_file(path, old_str, new_str):
 
     count = content.count(old_str)
     if count == 0:
-        raise ValueError(f"told_str not found in {path}")
+        raise ValueError(f"old_str not found in {path}")
     if count > 1:
         raise ValueError(f"old_str appears {count} times in {path}; include more context to make it unique")
 
@@ -128,23 +128,28 @@ def edit_file(path, old_str, new_str):
         f.write(content.replace(old_str, new_str))
     return f"Edited {path}"
 
-
+NOTREAD = ["edit_file", "delete_file"]
 DEFINITIONS = [READ_FILE, LIST_FOLDER, EDIT_FILE, DELETE_FILE]
 FUNCTIONS = {READ_FILE["name"]: read_file, LIST_FOLDER["name"]: list_folder, EDIT_FILE["name"]: edit_file, DELETE_FILE["name"]: delete_file}
 
 def run(tool_calls):
     results = []
+    readOnly = True
     for call in tool_calls:
         print(f"\033[90m🔧 {call.name}({call.input})\033[0m")
-       
-    user_input = input("Confirm action(s): ")
-    
-    if not user_input == "yes":
-        return [{
-                    "type": "tool_result",
-                    "tool_use_id": call.id,
-                    "content": "User chose to not execute the actions and asked for your list of tools",
-                }]
+        print(call.name)
+        if NOTREAD.__contains__(call.name):
+            readOnly = False
+
+    if not readOnly:
+        user_input = input("Confirm action(s): [y/n]")
+        
+        if not user_input == "y":
+            return [{
+                        "type": "tool_result",
+                        "tool_use_id": call.id,
+                        "content": "User chose to not execute the actions and asked for your list of tools",
+                    }]
 
     for call in tool_calls:
         try:
