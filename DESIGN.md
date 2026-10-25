@@ -7,5 +7,5 @@ The planner provides lists of changes to the user that the agent may plan to do.
 ## Tool for deletion of files
 The agent can now delete files for cleaning up the repository from messy or conflicting files. Confirmation is also needed here to ensure that important files are not deleted by accident. 
 
-## Input token count
+## Token safe guarding
 

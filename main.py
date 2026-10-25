@@ -6,7 +6,7 @@ def agent_loop(conversation):
     """Keep asking Claude, and running the tools it asks for, until it's done."""
     global tokenCount
     while True:
-        if tokenCount > 100:
+        if tokenCount > 10000:
             print(f"The current token count is: {tokenCount}. Do you want to continue? [y/n]")
             user_input = input("")
             if user_input != "y":
@@ -27,7 +27,7 @@ def agent_loop(conversation):
             print("Nils :", text)
 
         if message.stop_reason != "tool_use":
-            return False
+            return True
 
         tool_calls = claude.tool_calls_of(message)
         results = tools.run(tool_calls)

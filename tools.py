@@ -1,4 +1,5 @@
 import os
+import subprocess
 
 READ_FILE = {
     "name": "read_file",
@@ -78,12 +79,92 @@ DELETE_FILE = {
     },
 }
 
+COMMIT_CHANGES = {
+    "name": "commit_changes",
+    "description": "Executes a local shell command in the project directory. Use this to 'git add' and 'git commit'."
+    "Use this to generate a logical commit message.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "commit_message": {
+                "type": "string",
+                "description": "The name of the commit",
+            },
+        },
+        "required": ["commit_message"],
+    },
+}
+
+CHECK_CHANGES = {
+    "name": "check_changes",
+    "description": "Executes a local shell command in the project directory. Use this to check for file changes using 'git status' and 'git diff'.",
+    "input_schema": {
+        "type": "object",
+        "properties": {} 
+    }
+}
+
+def check_changes():
+    status = subprocess.run(["git", "status"], capture_output=True)
+    diff = subprocess.run(["git", "diff"], capture_output=True)
+    return f"""Checked file changes:
+        \n status: {status} 
+        \n diff: {diff}"""
+
+def commit_changes(commit_message):
+    token = os.environ["GITHUB_TOKEN"]
+    remote = subprocess.run(
+        ["git", "remote", "get-url", "origin"],
+        capture_output=True,
+        text=True,
+        check=True
+    ).stdout.strip()
+
+    subprocess.run(
+        ['git', 'config', '--global', 'user.name', 'Claude'],
+        check=True
+    )
+    subprocess.run(
+        ['git', 'config', '--global', 'user.email', 'claude@api.com'],
+        check=True
+    )
+    print(subprocess.run(["git", "add", "."], capture_output=True))
+    print(subprocess.run(["git", "commit", "-m", f"{commit_message}"], capture_output=True, text=True))
+
+    #token = os.environ.get("GITHUB_TOKEN")
+    #repo_url = f"https://{token}@://github.com"
+    env = os.environ.copy()
+    if remote.startswith("https://github.com/"):
+        authenticated_url = remote.replace(
+            "https://github.com/",
+            f"https://x-access-token:{token}@github.com/",
+            1
+        )
+    else:
+        raise ValueError(
+            "Expected an HTTPS GitHub origin URL"
+        )
+    # result = subprocess.run(["git", "push", "origin", "HEAD"], capture_output=True)
+    subprocess.run(
+        ["git", "push", authenticated_url, "HEAD"],
+        check=True,
+        env=env
+    )
+    # print(result)
+
+    #if result.returncode == 0:
+    #    print("Success:", result.stdout)
+    #else:
+    #    clean_error = result.stderr.replace(token, "********")
+    #    print("Failed:", clean_error)
+
+    return "Files commited and pushed"
+    
 def delete_file(path):
     if not os.path.exists(path):
         return f"{path} does not exist"
     
     os.remove(path)
-    
         
     return f"Deleted the file at {path}"
         
@@ -128,9 +209,25 @@ def edit_file(path, old_str, new_str):
         f.write(content.replace(old_str, new_str))
     return f"Edited {path}"
 
-NOTREAD = ["edit_file", "delete_file"]
-DEFINITIONS = [READ_FILE, LIST_FOLDER, EDIT_FILE, DELETE_FILE]
-FUNCTIONS = {READ_FILE["name"]: read_file, LIST_FOLDER["name"]: list_folder, EDIT_FILE["name"]: edit_file, DELETE_FILE["name"]: delete_file}
+
+
+NOTREAD = ["edit_file", "delete_file", "commit_changes"]
+DEFINITIONS = [
+    READ_FILE, 
+    LIST_FOLDER, 
+    EDIT_FILE, 
+    DELETE_FILE, 
+    COMMIT_CHANGES,
+    CHECK_CHANGES
+    ]
+FUNCTIONS = {
+    READ_FILE["name"]: read_file, 
+    LIST_FOLDER["name"]: list_folder, 
+    EDIT_FILE["name"]: edit_file, 
+    DELETE_FILE["name"]: delete_file,
+    COMMIT_CHANGES["name"]: commit_changes,
+    CHECK_CHANGES["name"]: check_changes
+    }
 
 def run(tool_calls):
     results = []
