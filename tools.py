@@ -1,6 +1,9 @@
 import os
 import subprocess
 
+DEFAULT_TIMEOUT = 30  # seconds
+MAX_OUTPUT = 10_000  # characters sent back to Claude
+
 READ_FILE = {
     "name": "read_file",
     "description": "Read a file and return its contents as text. "
@@ -102,6 +105,34 @@ CHECK_CHANGES = {
         "type": "object",
         "properties": {} 
     }
+}
+RUN_PROGRAM = {
+    "name": "run_program",
+    "description": "Run a program on the user's computer and return its output (stdout and stderr together) "
+    "and its exit code. The program runs in the current folder. "
+    "There is no shell: give the program and each of its arguments separately, "
+    "so pipes, redirects, globs and `cd` do not work. "
+    "A non-zero exit code is not an error of this tool: it comes back with the output, so you can read it. "
+    "Programs that run longer than the timeout are killed.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "program": {
+                "type": "string",
+                "description": "The program to run, e.g. `python` or `git`.",
+            },
+            "args": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "The arguments, one string each, e.g. [\"-m\", \"pytest\", \"-q\"]. Defaults to none.",
+            },
+            "timeout_seconds": {
+                "type": "integer",
+                "description": f"Seconds to wait before killing the program. Defaults to {DEFAULT_TIMEOUT}.",
+            },
+        },
+        "required": ["program"],
+    },
 }
 
 def check_changes():
@@ -209,16 +240,44 @@ def edit_file(path, old_str, new_str):
         f.write(content.replace(old_str, new_str))
     return f"Edited {path}"
 
+def run_program(program, args=None, timeout_seconds=DEFAULT_TIMEOUT):
+    command = [program] + list(args or [])
+    try:
+        completed = subprocess.run(
+            command,
+            stdin=subprocess.DEVNULL,  # a program that waits for input must not hang Sancho
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            errors="replace",
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as e:
+        output = e.stdout.decode(errors="replace") if isinstance(e.stdout, bytes) else (e.stdout or "")
+        raise RuntimeError(
+            f"{program} was killed after {timeout_seconds} seconds. Output so far:\n{_shorten(output)}"
+        )
+
+    return f"{_shorten(completed.stdout) or '(no output)'}\n[exit code {completed.returncode}]"
+
+def _shorten(text):
+    """Keep the start and the end of long output: the start says what ran, the end usually says what failed."""
+    if len(text) <= MAX_OUTPUT:
+        return text
+    half = MAX_OUTPUT // 2
+    return text[:half] + f"\n... ({len(text) - MAX_OUTPUT} characters left out) ...\n" + text[-half:]
 
 
-NOTREAD = ["edit_file", "delete_file", "commit_changes"]
+
+NOTREAD = ["edit_file", "delete_file", "commit_changes","run_program"]
 DEFINITIONS = [
     READ_FILE, 
     LIST_FOLDER, 
     EDIT_FILE, 
     DELETE_FILE, 
     COMMIT_CHANGES,
-    CHECK_CHANGES
+    CHECK_CHANGES,
+    RUN_PROGRAM
     ]
 FUNCTIONS = {
     READ_FILE["name"]: read_file, 
@@ -226,7 +285,8 @@ FUNCTIONS = {
     EDIT_FILE["name"]: edit_file, 
     DELETE_FILE["name"]: delete_file,
     COMMIT_CHANGES["name"]: commit_changes,
-    CHECK_CHANGES["name"]: check_changes
+    CHECK_CHANGES["name"]: check_changes,
+    RUN_PROGRAM["name"]: run_program
     }
 
 def run(tool_calls):
