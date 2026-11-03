@@ -5,10 +5,10 @@ MODEL = "claude-sonnet-5-5"
 client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from the environment
 Unreachable = anthropic.APIError
 
-def get_next_answer(conversation, tools):
+def get_next_answer(conversation, tools, model):
     """Send the whole conversation and the tools to Claude, and return its reply."""
     return client.messages.create(
-        model=MODEL, max_tokens=1600, messages=conversation, tools=tools
+        model=model, max_tokens=1600, messages=conversation, tools=tools
     )
 
 
@@ -21,7 +21,7 @@ def tool_calls_of(message):
     """The tools Claude asks us to run in this reply."""
     return [block for block in message.content if block.type == "tool_use"]
 
-def get_token_estimate(message):
+def get_token_estimate(message, model):
     # response = client.messages.count_tokens(message)
-    response = client.messages.count_tokens(model=MODEL, messages=[{"role": "user", "content": message.content}])
+    response = client.messages.count_tokens(model=model, messages=[{"role": "user", "content": message.content}])
     return response.json()

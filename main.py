@@ -6,14 +6,14 @@ def agent_loop(conversation):
     """Keep asking Claude, and running the tools it asks for, until it's done."""
     global tokenCount
     while True:
-        if tokenCount > 10000:
+        if tokenCount > 20000:
             print(f"The current token count is: {tokenCount}. Do you want to continue? [y/n]")
             user_input = input("")
             if user_input != "y":
                 return False
             tokenCount = 0 
-
-        message = claude.get_next_answer(conversation, tools.DEFINITIONS)
+        print(tools.MODEL)
+        message = claude.get_next_answer(conversation, tools.DEFINITIONS, model=tools.MODEL)
 
         tokenCount += message.usage.input_tokens + message.usage.output_tokens 
         # Every reply goes into the conversation, tool calls included: the API

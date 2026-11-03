@@ -1,6 +1,8 @@
 import os
 import subprocess
 
+global MODEL
+MODEL = "claude-haiku-5-5"
 DEFAULT_TIMEOUT = 30  # seconds
 MAX_OUTPUT = 10_000  # characters sent back to Claude
 
@@ -135,6 +137,34 @@ RUN_PROGRAM = {
     },
 }
 
+ESCALATE = {
+    "name": "escalate",
+    "description": f"A tool for switching between agent models. Use this tool when the user is not satisfied, want a better answer or questions your answer or any similar prompts. It will switch you to a better and stronger model",
+    "input_schema": {
+        "type": "object",
+        "properties": {} 
+    }
+}
+
+DESCALATE = {
+    "name": "descalate",
+    "description": f"A tool for switching between agent models. Use this tool when the user ask simple questions. It will switch you to a cheaper and faster model",
+    "input_schema": {
+        "type": "object",
+        "properties": {} 
+    }
+}
+
+def escalate():
+    global MODEL 
+    MODEL = "claude-sonnet-5-5"
+    return f"Model switched to {MODEL}"
+
+def descalate():
+    global MODEL 
+    MODEL = "claude-haiku-5-5"
+    return f"Model switched to {MODEL}"
+
 def check_changes():
     status = subprocess.run(["git", "status"], capture_output=True)
     diff = subprocess.run(["git", "diff"], capture_output=True)
@@ -245,7 +275,7 @@ def run_program(program, args=None, timeout_seconds=DEFAULT_TIMEOUT):
     try:
         completed = subprocess.run(
             command,
-            stdin=subprocess.DEVNULL,  # a program that waits for input must not hang Sancho
+            stdin=subprocess.DEVNULL,  # a program that waits for input must not hang Nils
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -267,8 +297,6 @@ def _shorten(text):
     half = MAX_OUTPUT // 2
     return text[:half] + f"\n... ({len(text) - MAX_OUTPUT} characters left out) ...\n" + text[-half:]
 
-
-
 NOTREAD = ["edit_file", "delete_file", "commit_changes","run_program"]
 DEFINITIONS = [
     READ_FILE, 
@@ -277,7 +305,9 @@ DEFINITIONS = [
     DELETE_FILE, 
     COMMIT_CHANGES,
     CHECK_CHANGES,
-    RUN_PROGRAM
+    RUN_PROGRAM,
+    ESCALATE,
+    DESCALATE
     ]
 FUNCTIONS = {
     READ_FILE["name"]: read_file, 
@@ -286,7 +316,9 @@ FUNCTIONS = {
     DELETE_FILE["name"]: delete_file,
     COMMIT_CHANGES["name"]: commit_changes,
     CHECK_CHANGES["name"]: check_changes,
-    RUN_PROGRAM["name"]: run_program
+    RUN_PROGRAM["name"]: run_program,
+    ESCALATE["name"]: escalate,
+    DESCALATE["name"]: descalate
     }
 
 def run(tool_calls):
