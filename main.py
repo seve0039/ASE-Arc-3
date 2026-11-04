@@ -13,19 +13,16 @@ def agent_loop(conversation, userPrompt):
                 return False
             tokenCount = 0 
         print(tools.MODEL)
-        message = claude.get_next_answer(conversation, tools.DEFINITIONS, model=tools.MODEL)
-        tokenCount += message.usage.input_tokens + message.usage.output_tokens
         if tools.MODEL == "claude-haiku-5-5":
             evaluation_conversation = [
                 {
                     "role": "user",
                     "content": (
                         f"Original user prompt:\n{userPrompt}\n\n"
-                        f"Haiku's response:\n{message.content}\n\n"
-                        "Evaluate whether Haiku's response is sufficient "
-                        "and correct for the original prompt. "
+                        "Evaluate whether Haiku's will be able to give a sufficient "
+                        "and correct response for the original prompt. "
                         "Use the tool 'Escalate' if Haiku's response "
-                        "is not good enough. Otherwise, do nothing."
+                        "wouln't be good enough. Otherwise, do nothing."
                     )
                 }
             ]
@@ -50,16 +47,16 @@ def agent_loop(conversation, userPrompt):
                 if text:
                     print("Nils :", text)
 
-                if message.stop_reason != "tool_use":
+                if evaluation.stop_reason != "tool_use":
                     return True
 
                 tool_calls = claude.tool_calls_of(evaluation)
                 results = tools.run(tool_calls)
                 # evaluation_conversation.append({"role": "user", "content": results})
                 
-                if tools.MODEL == "claude-sonnet-5-5":
-                    message = claude.get_next_answer(conversation, tools.DEFINITIONS, model=tools.MODEL)
-                    tokenCount += message.usage.input_tokens + message.usage.output_tokens
+
+        message = claude.get_next_answer(conversation, tools.DEFINITIONS, model=tools.MODEL)
+        tokenCount += message.usage.input_tokens + message.usage.output_tokens
 
          
         # Every reply goes into the conversation, tool calls included: the API
