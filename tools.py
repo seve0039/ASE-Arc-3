@@ -2,7 +2,7 @@ import os
 import subprocess
 
 global MODEL
-MODEL = "claude-haiku-5-5"
+MODEL = "claude-haiku-5-5" # current model 
 DEFAULT_TIMEOUT = 30  # seconds
 MAX_OUTPUT = 10_000  # characters sent back to Claude
 

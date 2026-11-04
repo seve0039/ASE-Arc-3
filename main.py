@@ -2,7 +2,7 @@ import claude
 import tools
 global tokenCount
 tokenCount = 0
-def agent_loop(conversation):
+def agent_loop(conversation, userPrompt):
     """Keep asking Claude, and running the tools it asks for, until it's done."""
     global tokenCount
     while True:
@@ -15,11 +15,57 @@ def agent_loop(conversation):
         print(tools.MODEL)
         message = claude.get_next_answer(conversation, tools.DEFINITIONS, model=tools.MODEL)
 
+        if tools.MODEL == "claude-haiku-5-5":
+            evaluation_conversation = [
+                {
+                    "role": "user",
+                    "content": (
+                        f"Original user prompt:\n{userPrompt}\n\n"
+                        f"Haiku's response:\n{message.content}\n\n"
+                        "Evaluate whether Haiku's response is sufficient "
+                        "and correct for the original prompt. "
+                        "Use the tool 'Escalate' if Haiku's response "
+                        "is not good enough. Otherwise, do nothing."
+                    )
+                }
+            ]
+
+            evaluation = claude.get_next_answer(
+                evaluation_conversation,
+                tools.DEFINITIONS,
+                model="claude-sonnet-5-5",
+                systemPrompt=(
+                    "You are an evaluator. Assess the quality and "
+                    "correctness of Haiku's response. Escalate if "
+                    "necessary."
+                )
+            )
+
+            evaluation_conversation.append({"role": "assistant", "content": evaluation.content})
+            print(evaluation.content)
+
+            if len(claude.tool_calls_of(evaluation)) > 0: # if it wants to escalate
+                text = claude.text_of(evaluation)
+                if text:
+                    print("Nils :", text)
+
+                if message.stop_reason != "tool_use":
+                    return True
+
+                tool_calls = claude.tool_calls_of(evaluation)
+                results = tools.run(tool_calls)
+                # evaluation_conversation.append({"role": "user", "content": results})
+                
+                if tools.MODEL == "claude-sonnet-5-5":
+                    message = claude.get_next_answer(conversation, tools.DEFINITIONS, model=tools.MODEL)
+
         tokenCount += message.usage.input_tokens + message.usage.output_tokens 
         # Every reply goes into the conversation, tool calls included: the API
         # matches each tool_result to a tool_use in the previous assistant message,
         # and wants the reply's thinking blocks sent back unchanged.
         # print(claude.get_token_estimate(message))
+
+
         conversation.append({"role": "assistant", "content": message.content})
 
         text = claude.text_of(message)
@@ -44,14 +90,13 @@ def main():
                 continue
 
             conversation.append({"role": "user", "content": user_input})
-            try:
-                session = agent_loop(conversation)
-                if not session:
-                    return
-                
-            except claude.Unreachable as e:
-                print(
-                    f"Nils can't reach Claude right now: {e} Try again in a moment.")
+            # try:
+            session = agent_loop(conversation, user_input)
+            if not session:
+                return
+            
+            # except claude.Unreachable as e:
+            #     print(f"Nils can't reach Claude right now: {e} Try again in a moment.")
     except (EOFError, KeyboardInterrupt):
         pass
 
