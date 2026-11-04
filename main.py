@@ -14,7 +14,7 @@ def agent_loop(conversation, userPrompt):
             tokenCount = 0 
         print(tools.MODEL)
         message = claude.get_next_answer(conversation, tools.DEFINITIONS, model=tools.MODEL)
-
+        tokenCount += message.usage.input_tokens + message.usage.output_tokens
         if tools.MODEL == "claude-haiku-5-5":
             evaluation_conversation = [
                 {
@@ -40,6 +40,7 @@ def agent_loop(conversation, userPrompt):
                     "necessary."
                 )
             )
+            tokenCount += evaluation.usage.input_tokens + evaluation.usage.output_tokens
 
             evaluation_conversation.append({"role": "assistant", "content": evaluation.content})
             print(evaluation.content)
@@ -58,8 +59,9 @@ def agent_loop(conversation, userPrompt):
                 
                 if tools.MODEL == "claude-sonnet-5-5":
                     message = claude.get_next_answer(conversation, tools.DEFINITIONS, model=tools.MODEL)
+                    tokenCount += message.usage.input_tokens + message.usage.output_tokens
 
-        tokenCount += message.usage.input_tokens + message.usage.output_tokens 
+         
         # Every reply goes into the conversation, tool calls included: the API
         # matches each tool_result to a tool_use in the previous assistant message,
         # and wants the reply's thinking blocks sent back unchanged.
