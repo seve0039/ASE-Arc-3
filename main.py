@@ -1,17 +1,21 @@
 import claude
 import tools
-global tokenCount
-tokenCount = 0
+global costTotal
+global permCost
+costTotal = 0
+permCost = 0
 def agent_loop(conversation, userPrompt):
     """Keep asking Claude, and running the tools it asks for, until it's done."""
-    global tokenCount
+    global costTotal
+    global permCost
     while True:
-        if tokenCount > 20000:
-            print(f"The current token count is: {tokenCount}. Do you want to continue? [y/n]")
+        if costTotal > 0.1:
+            print(f"The current cost total is: {permCost}. Do you want to continue? [y/n]")
             user_input = input("")
             if user_input != "y":
                 return False
-            tokenCount = 0 
+            costTotal = 0 
+            
         print(tools.MODEL)
         if tools.MODEL == "claude-haiku-5-5":
             evaluation_conversation = [
@@ -37,10 +41,10 @@ def agent_loop(conversation, userPrompt):
                     "necessary."
                 )
             )
-            tokenCount += evaluation.usage.input_tokens + evaluation.usage.output_tokens
+            costTotal += convertTokenPrice(evaluation.usage.input_tokens, evaluation.usage.output_tokens)
 
             evaluation_conversation.append({"role": "assistant", "content": evaluation.content})
-            print(evaluation.content)
+            # print(evaluation.content)
 
             if len(claude.tool_calls_of(evaluation)) > 0: # if it wants to escalate
                 text = claude.text_of(evaluation)
@@ -56,8 +60,9 @@ def agent_loop(conversation, userPrompt):
                 
 
         message = claude.get_next_answer(conversation, tools.DEFINITIONS, model=tools.MODEL)
-        tokenCount += message.usage.input_tokens + message.usage.output_tokens
-
+        costTotal += convertTokenPrice(evaluation.usage.input_tokens, evaluation.usage.output_tokens)
+        permCost += costTotal
+        print(f"The total cost is: ${permCost}")
          
         # Every reply goes into the conversation, tool calls included: the API
         # matches each tool_result to a tool_use in the previous assistant message,
@@ -77,6 +82,20 @@ def agent_loop(conversation, userPrompt):
         tool_calls = claude.tool_calls_of(message)
         results = tools.run(tool_calls)
         conversation.append({"role": "user", "content": results})
+
+def convertTokenPrice(input_token, output_token):
+    if tools.MODEL == "claude-haiku-5-5":
+        # From $0.10 / input MTok
+        # From $0.50 / output MTok
+        cost_input = (input_token / 1000000) * 0.1
+        cost_output = (output_token / 1000000) * 0.5
+        return cost_input + cost_output
+    else: # sonnet 5.5 
+        # $2 / input MTok
+        # $10 / output MTok
+        cost_input = (input_token / 1000000) * 2
+        cost_output = (output_token / 1000000) * 10
+        return cost_input + cost_output
 
 
 def main():
