@@ -1,21 +1,27 @@
 import claude
 import tools
-global tokenCount
-tokenCount = 0
+global costTotal
+global permCost
+costTotal = 0
+permCost = 0
 def agent_loop(conversation):
     """Keep asking Claude, and running the tools it asks for, until it's done."""
-    global tokenCount
+    global costTotal
+    global permCost
     while True:
-        if tokenCount > 10000:
-            print(f"The current token count is: {tokenCount}. Do you want to continue? [y/n]")
+        if costTotal > 0.1:
+            print(f"The current total cost is: {permCost}. Do you want to continue? [y/n]")
             user_input = input("")
             if user_input != "y":
                 return False
-            tokenCount = 0 
+            costTotal = 0 
 
         message = claude.get_next_answer(conversation, tools.DEFINITIONS)
 
-        tokenCount += message.usage.input_tokens + message.usage.output_tokens 
+        costTotal += convertTokenPrice(message.usage.input_tokens, message.usage.output_tokens)
+        permCost += costTotal
+        print(f"The total cost is: ${permCost}")
+
         # Every reply goes into the conversation, tool calls included: the API
         # matches each tool_result to a tool_use in the previous assistant message,
         # and wants the reply's thinking blocks sent back unchanged.
@@ -33,6 +39,13 @@ def agent_loop(conversation):
         results = tools.run(tool_calls)
         conversation.append({"role": "user", "content": results})
 
+def convertTokenPrice(input_token, output_token):
+    # sonnet 5.5 
+    # $2 / input MTok
+    # $10 / output MTok
+    cost_input = (input_token / 1000000) * 2
+    cost_output = (output_token / 1000000) * 10
+    return cost_input + cost_output
 
 def main():
     conversation = []
