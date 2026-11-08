@@ -43,8 +43,14 @@ def convertTokenPrice(input_token, output_token):
     # sonnet 5.5 
     # $2 / input MTok
     # $10 / output MTok
-    cost_input = (input_token / 1000000) * 2
-    cost_output = (output_token / 1000000) * 10
+    if input_token < 100000:
+        cost_input = (input_token / 1000000) * 0.10 
+    else :
+        cost_input = (input_token / 1000000) * 0.50 
+    if output_token < 100000:
+        cost_output = (output_token / 1000000) * 0.50 
+    else :
+        cost_output = (output_token / 1000000) * 2.50 
     return cost_input + cost_output
 
 def main():

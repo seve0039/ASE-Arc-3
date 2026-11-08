@@ -1,15 +1,25 @@
 import anthropic
 
-MODEL = "claude-sonnet-5-5"
+MODEL = "claude-haiku-5-5"
 
 client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from the environment
 Unreachable = anthropic.APIError
 
 def get_next_answer(conversation, tools):
     """Send the whole conversation and the tools to Claude, and return its reply."""
-    return client.messages.create(
-        model=MODEL, max_tokens=1600, messages=conversation, tools=tools
-    )
+    # return client.messages.create(
+    #     model=MODEL, max_tokens=25000, messages=conversation, tools=tools
+    # ) def get_next_answer(conversation, tools):
+    """Send the whole conversation and tools to Claude."""
+
+    with client.messages.stream(
+        model=MODEL,
+        max_tokens=25000,
+        messages=conversation,
+        tools=tools
+    ) as stream:
+        return stream.get_final_message()
+
 
 
 def text_of(message):
