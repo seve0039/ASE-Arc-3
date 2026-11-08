@@ -6,10 +6,19 @@ client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from the environment
 Unreachable = anthropic.APIError
 
 def get_next_answer(conversation, tools, model, systemPrompt=""):
-    """Send the whole conversation and the tools to Claude, and return its reply."""
-    return client.messages.create(
-        model=model, max_tokens=1600, messages=conversation, tools=tools, system=systemPrompt
-    )
+    # """Send the whole conversation and the tools to Claude, and return its reply."""
+    # return client.messages.create(
+    #     model=model, max_tokens=20000, messages=conversation, tools=tools, system=systemPrompt
+    # )
+    """Send the whole conversation and tools to Claude."""
+    with client.messages.stream(
+        model=model,
+        max_tokens=100000,
+        messages=conversation,
+        tools=tools,
+        system=systemPrompt
+    ) as stream:
+        return stream.get_final_message()
 
 
 def text_of(message):

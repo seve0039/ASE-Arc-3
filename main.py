@@ -41,6 +41,7 @@ def agent_loop(conversation, userPrompt):
                     "necessary."
                 )
             )
+            # print(evaluation)
             costTotal += convertTokenPrice(evaluation.usage.input_tokens, evaluation.usage.output_tokens)
 
             evaluation_conversation.append({"role": "assistant", "content": evaluation.content})
@@ -58,9 +59,8 @@ def agent_loop(conversation, userPrompt):
                 results = tools.run(tool_calls)
                 # evaluation_conversation.append({"role": "user", "content": results})
                 
-
         message = claude.get_next_answer(conversation, tools.DEFINITIONS, model=tools.MODEL)
-        costTotal += convertTokenPrice(evaluation.usage.input_tokens, evaluation.usage.output_tokens)
+        costTotal += convertTokenPrice(message.usage.input_tokens, message.usage.output_tokens)
         permCost += costTotal
         print(f"The total cost is: ${permCost}")
          
@@ -77,6 +77,8 @@ def agent_loop(conversation, userPrompt):
             print("Nils :", text)
 
         if message.stop_reason != "tool_use":
+
+            # print(message)
             return True
 
         tool_calls = claude.tool_calls_of(message)
@@ -87,8 +89,14 @@ def convertTokenPrice(input_token, output_token):
     if tools.MODEL == "claude-haiku-5-5":
         # From $0.10 / input MTok
         # From $0.50 / output MTok
-        cost_input = (input_token / 1000000) * 0.1
-        cost_output = (output_token / 1000000) * 0.5
+        if input_token < 100000:
+            cost_input = (input_token / 1000000) * 0.10 
+        else :
+            cost_input = (input_token / 1000000) * 0.50 
+        if output_token < 100000:
+            cost_output = (output_token / 1000000) * 0.50 
+        else :
+            cost_output = (output_token / 1000000) * 2.50 
         return cost_input + cost_output
     else: # sonnet 5.5 
         # $2 / input MTok
